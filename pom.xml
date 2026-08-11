@@ -17,13 +17,20 @@
         </repository>
     </distributionManagement>
 
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/RallyDeals/rally-common</url>
+        </repository>
+    </repositories>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.16</spring-boot.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <rally-common.version>0.2.0</rally-common.version>
+        <rally-common.version>0.3.0</rally-common.version>
     </properties>
 
     <dependencyManagement>
