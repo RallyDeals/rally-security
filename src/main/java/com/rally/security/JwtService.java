@@ -17,6 +17,7 @@ import java.util.Map;
 public class JwtService {
 
     private static final String CLAIM_ROLES = "roles";
+    private static final String CLAIM_USERNAME = "username";
 
     private final JwtProperties properties;
     private final SecretKey signingKey;
@@ -74,6 +75,10 @@ public class JwtService {
 
     public String getUserId(Claims claims) {
         return claims.getSubject();
+    }
+
+    public String getUsername(Claims claims) {
+        return claims.get(CLAIM_USERNAME, String.class);
     }
 
     @SuppressWarnings("unchecked")
