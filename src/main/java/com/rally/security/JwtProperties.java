@@ -8,8 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Getter
 @ConfigurationProperties(prefix = "rally.jwt")
 public class JwtProperties {
-    private String secret;
-    private long expirationMs = 3_600_000;
-    private long refreshExpirationMs = 604_800_000;
-    private String issuer = "rally-auth-service";
+    /** PEM-armored RSA public key. Matches the private key rally-auth signs access tokens with. */
+    private String publicKey;
 }

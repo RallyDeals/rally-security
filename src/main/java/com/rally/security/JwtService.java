@@ -6,55 +6,46 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Verification only — tokens are signed exclusively by the Auth Service (RS256, its own
+ * RSA private key). This service holds only the matching public key, so it can validate
+ * signatures but never mint tokens.
+ */
 public class JwtService {
 
-    private static final String CLAIM_ROLES = "roles";
-    private static final String CLAIM_USERNAME = "username";
+    private static final String CLAIM_ROLE = "role";
+    private static final String CLAIM_USERNAME = "name";
 
-    private final JwtProperties properties;
-    private final SecretKey signingKey;
+    private final PublicKey verificationKey;
 
     public JwtService(JwtProperties properties) {
-        this.properties = properties;
-        this.signingKey = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.verificationKey = parsePublicKey(properties.getPublicKey());
     }
 
-    /** Auth Service only. */
-    public String generateAccessToken(String userId, List<String> roles) {
-        return generateToken(userId, roles, properties.getExpirationMs());
-    }
-
-    /** Auth Service only. */
-    public String generateRefreshToken(String userId) {
-        return generateToken(userId, List.of(), properties.getRefreshExpirationMs());
-    }
-
-    private String generateToken(String userId, List<String> roles, long ttlMs) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + ttlMs);
-
-        return Jwts.builder()
-                .subject(userId)
-                .issuer(properties.getIssuer())
-                .claims(Map.of(CLAIM_ROLES, roles))
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(signingKey)
-                .compact();
+    private static PublicKey parsePublicKey(String pem) {
+        try {
+            String der = pem
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s", "");
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            return keyFactory.generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(der)));
+        } catch (Exception e) {
+            throw new IllegalStateException("Invalid RSA public key", e);
+        }
     }
 
     public Claims parseAndValidate(String token) {
         try {
             return Jwts.parser()
-                    .verifyWith(signingKey)
+                    .verifyWith(verificationKey)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
@@ -81,9 +72,8 @@ public class JwtService {
         return claims.get(CLAIM_USERNAME, String.class);
     }
 
-    @SuppressWarnings("unchecked")
     public List<String> getRoles(Claims claims) {
-        Object roles = claims.get(CLAIM_ROLES);
-        return roles == null ? List.of() : (List<String>) roles;
+        String role = claims.get(CLAIM_ROLE, String.class);
+        return (role == null || role.isEmpty()) ? List.of() : List.of(role);
     }
 }
